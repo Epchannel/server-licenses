@@ -1,0 +1,12 @@
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Found the following certs:
+  Certificate Name: epchannel.codes
+    Serial Number: 564b435b17191204659f9e978a0792c665b
+    Key Type: RSA
+    Domains: epchannel.codes
+    Expiry Date: 2026-03-29 22:34:38+00:00 (VALID: 66 days)
+    Certificate Path: /etc/letsencrypt/live/epchannel.codes/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/epchannel.codes/privkey.pem
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

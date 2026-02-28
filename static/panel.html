@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EP Channel - Tool Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --bg-gradient-1: #0f0c29;
+            --bg-gradient-2: #302b63;
+            --bg-gradient-3: #24243e;
+            --card-bg: rgba(255,255,255,0.06);
+            --card-border: rgba(255,255,255,0.1);
+            --card-hover: rgba(255,255,255,0.1);
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2), var(--bg-gradient-3));
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* ---- Login ---- */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .login-box {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            padding: 48px 40px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+        }
+        .login-box h1 {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-box .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        /* ---- Forms ---- */
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+        }
+        .form-group select option { background: #1e1b4b; color: var(--text); }
+
+        /* ---- Buttons ---- */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.5); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: var(--text); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 8px; }
+        .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+        .btn-block { width: 100%; justify-content: center; }
+        .btn-warning { background: var(--warning); color: #1a1a1a; }
+        .btn-info { background: var(--info); color: white; }
+
+        .error-msg { color: var(--danger); text-align: center; margin-top: 12px; font-size: 13px; }
+
+        /* ---- Container ---- */
+        .container { max-width: 1440px; margin: 0 auto; padding: 20px; }
+
+        /* ---- Header ---- */
+        .header {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            padding: 18px 28px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .header .user-info span { color: var(--text-muted); font-size: 14px; }
+
+        /* ---- Stats ---- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            padding: 20px 24px;
+            border-radius: 14px;
+            transition: all 0.3s;
+        }
+        .stat-card:hover { background: var(--card-hover); transform: translateY(-2px); }
+        .stat-card h3 { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 500; }
+        .stat-card .value { font-size: 32px; font-weight: 800; }
+        .stat-card.purple .value { color: var(--primary-light); }
+        .stat-card.green .value { color: var(--success); }
+        .stat-card.red .value { color: var(--danger); }
+        .stat-card.blue .value { color: var(--info); }
+        .stat-card.yellow .value { color: var(--warning); }
+
+        /* ---- Tabs ---- */
+        .tabs {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .tab-headers {
+            display: flex;
+            border-bottom: 1px solid var(--card-border);
+            overflow-x: auto;
+        }
+        .tab-header {
+            flex: 1;
+            padding: 14px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+            position: relative;
+        }
+        .tab-header:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+        .tab-header.active {
+            color: var(--primary-light);
+            background: rgba(99,102,241,0.08);
+        }
+        .tab-header.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), #7c3aed);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .tab-content { display: none; padding: 24px; }
+        .tab-content.active { display: block; }
+
+        /* ---- Tables ---- */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        table th, table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 13px;
+        }
+        table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        table tr:hover { background: rgba(255,255,255,0.03); }
+
+        /* ---- Badges ---- */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .badge-success { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .badge-danger { background: rgba(239,68,68,0.15); color: #f87171; }
+        .badge-warning { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .badge-info { background: rgba(59,130,246,0.15); color: #60a5fa; }
+
+        /* ---- Tool Cards ---- */
+        .tool-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .tool-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.3s;
+        }
+        .tool-card:hover { background: rgba(255,255,255,0.07); border-color: var(--primary); }
+        .tool-card .tool-name { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+        .tool-card .tool-code { color: var(--text-muted); font-size: 12px; font-family: monospace; }
+        .tool-card .tool-endpoint { color: var(--primary-light); font-size: 12px; font-family: monospace; margin-top: 4px; }
+        .tool-card .tool-stats { margin-top: 12px; display: flex; gap: 16px; }
+        .tool-card .tool-stat { text-align: center; }
+        .tool-card .tool-stat .num { font-size: 20px; font-weight: 700; }
+        .tool-card .tool-stat .label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+
+        /* ---- Modal ---- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: linear-gradient(145deg, #1e1b4b, #1a1a3e);
+            border: 1px solid var(--card-border);
+            padding: 32px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .modal-header h2 { font-size: 20px; font-weight: 700; }
+        .close-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+
+        /* ---- User Licenses Expand ---- */
+        .expand-row { display: none; }
+        .expand-row.active { display: table-row; }
+        .expand-row td { padding: 0 16px 16px; }
+        .license-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .license-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 220px;
+        }
+        .license-chip .chip-tool { font-weight: 700; color: var(--primary-light); }
+        .license-chip .chip-key { font-family: monospace; color: var(--text); font-size: 11px; }
+        .license-chip .chip-expire { color: var(--text-muted); font-size: 11px; }
+        .license-chip .chip-actions { display: flex; gap: 4px; margin-top: 6px; }
+
+        /* ---- Search ---- */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .search-box {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 8px 16px;
+            color: var(--text);
+            font-size: 13px;
+            width: 280px;
+            font-family: 'Inter', sans-serif;
+        }
+        .search-box:focus { outline: none; border-color: var(--primary); }
+
+        /* ---- Code ---- */
+        code {
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #c084fc;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 12px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .toolbar { flex-direction: column; align-items: stretch; }
+            .search-box { width: 100%; }
+        }
+
+        /* ---- Notification Toast ---- */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: white;
+            z-index: 2000;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .toast-success { background: linear-gradient(135deg, #059669, #10b981); }
+        .toast-error { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+
+        /* ---- Scrollbar ---- */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <h1>🛡️ EP Channel</h1>
+            <p class="subtitle">Tool Management Panel</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
+                <div id="loginError" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboardPage" class="container hidden">
+        <div class="header">
+            <h1>🛡️ EP Channel — Tool Manager</h1>
+            <div class="user-info">
+                <span>Xin chào, <strong id="currentUser"></strong></span>
+                <button onclick="logout()" class="btn btn-sm btn-secondary">Đăng xuất</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card purple">
+                <h3>Tổng Users</h3>
+                <div class="value" id="statUsers">0</div>
+            </div>
+            <div class="stat-card green">
+                <h3>Licenses Active</h3>
+                <div class="value" id="statActiveLic">0</div>
+            </div>
+            <div class="stat-card red">
+                <h3>Licenses Expired</h3>
+                <div class="value" id="statExpiredLic">0</div>
+            </div>
+            <div class="stat-card blue">
+                <h3>Tổng Licenses</h3>
+                <div class="value" id="statTotalLic">0</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab-headers">
+                <button class="tab-header active" onclick="switchTab('users')">👥 Quản lý Users</button>
+                <button class="tab-header" onclick="switchTab('licenses')">🔑 Bản quyền Tool</button>
+                <button class="tab-header" onclick="switchTab('tools')">🛠️ Danh sách Tools</button>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="usersTab" class="tab-content active">
+                <div class="toolbar">
+                    <input type="text" class="search-box" id="searchUser" placeholder="🔍 Tìm user theo tên, email, telegram..." oninput="filterUsers()">
+                    <button onclick="showUserModal()" class="btn btn-sm btn-primary">+ Thêm User</button>
+                </div>
+                <div class="table-wrapper" id="usersTable"></div>
+            </div>
+
+            <!-- Licenses Tab -->
+            <div id="licensesTab" class="tab-content">
+                <div class="toolbar">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <input type="text" class="search-box" id="searchLicense" placeholder="🔍 Tìm license key, user..." oninput="filterLicenses()">
+                        <select id="filterTool" onchange="filterLicenses()" style="background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); border-radius: 10px; padding: 8px 14px; color: var(--text); font-size: 13px;">
+                            <option value="">Tất cả Tools</option>
+                            <option value="VER_PHONE_VEO">Ver Phone Veo 3</option>
+                            <option value="CHECK_VEO3">Check Ultra Veo 3</option>
+                            <option value="PICK_VEO3">Pick User Veo 3</option>
+                            <option value="CHANGE_PASS">Change Pass Veo 3</option>
+                        </select>
+                    </div>
+                    <button onclick="showLicenseModal()" class="btn btn-sm btn-primary">+ Cấp bản quyền</button>
+                </div>
+                <div class="table-wrapper" id="licensesTable"></div>
+            </div>
+
+            <!-- Tools Tab -->
+            <div id="toolsTab" class="tab-content">
+                <div class="tool-cards" id="toolCards"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="userModalTitle">Thêm User</h2>
+                <button class="close-btn" onclick="closeModal('userModal')">&times;</button>
+            </div>
+            <form id="userForm">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label>Tên</label>
+                    <input type="text" id="formUserName" required placeholder="Nguyễn Văn A">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="formUserEmail" required placeholder="email@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Telegram ID</label>
+                    <input type="text" id="formUserTelegram" placeholder="@username hoặc ID">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('userModal')">Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- License Modal -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Cấp bản quyền Tool</h2>
+                <button class="close-btn" onclick="closeModal('licenseModal')">&times;</button>
+            </div>
+            <form id="licenseForm">
+                <div class="form-group">
+                    <label>Chọn User</label>
+                    <select id="formLicUser" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Chọn Tool</label>
+                    <select id="formLicTool" required>
+                        <option value="VER_PHONE_VEO">Ver Phone Veo 3</option>
+                        <option value="CHECK_VEO3">Check Ultra Veo 3</option>
+                        <option value="PICK_VEO3">Pick User Veo 3</option>
+                        <option value="CHANGE_PASS">Change Pass Veo 3</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Thời hạn (ngày)</label>
+                    <input type="number" id="formLicDays" value="365" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Ghi chú</label>
+                    <textarea id="formLicNotes" rows="2" placeholder="Ghi chú thêm..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Tạo License</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('licenseModal')">Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let token = localStorage.getItem('panel_token');
+        let currentUsername = localStorage.getItem('panel_username');
+        let allUsers = [];
+        let allLicenses = [];
+
+        if (token) showDashboard();
+
+        // ========== Toast ==========
+        function toast(msg, type = 'success') {
+            const el = document.createElement('div');
+            el.className = `toast toast-${type}`;
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        // ========== Auth ==========
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            try {
+                const res = await fetch(`${API_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.access_token;
+                    currentUsername = data.username;
+                    localStorage.setItem('panel_token', token);
+                    localStorage.setItem('panel_username', currentUsername);
+                    showDashboard();
+                } else {
+                    document.getElementById('loginError').textContent = 'Sai tên đăng nhập hoặc mật khẩu';
+                }
+            } catch (err) {
+                document.getElementById('loginError').textContent = 'Lỗi kết nối';
+            }
+        });
+
+        function logout() {
+            token = null;
+            localStorage.removeItem('panel_token');
+            localStorage.removeItem('panel_username');
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('dashboardPage').classList.add('hidden');
+        }
+
+        async function apiFetch(url, options = {}) {
+            const res = await fetch(`${API_URL}${url}`, {
+                ...options,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                }
+            });
+            if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+            return res;
+        }
+
+        // ========== Dashboard ==========
+        async function showDashboard() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('dashboardPage').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = currentUsername;
+            await Promise.all([loadStats(), loadUsers(), loadLicenses()]);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await apiFetch('/panel/api/stats');
+                if (res.ok) {
+                    const d = await res.json();
+                    document.getElementById('statUsers').textContent = d.total_users;
+                    document.getElementById('statActiveLic').textContent = d.active_licenses;
+                    document.getElementById('statExpiredLic').textContent = d.expired_licenses;
+                    document.getElementById('statTotalLic').textContent = d.total_licenses;
+                    renderToolCards(d.tool_stats);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // ========== Users ==========
+        async function loadUsers() {
+            try {
+                const res = await apiFetch('/panel/api/users');
+                if (res.ok) {
+                    allUsers = await res.json();
+                    renderUsersTable(allUsers);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('searchUser').value.toLowerCase();
+            const filtered = allUsers.filter(u =>
+                u.name.toLowerCase().includes(q) ||
+                u.email.toLowerCase().includes(q) ||
+                (u.telegram_id || '').toLowerCase().includes(q)
+            );
+            renderUsersTable(filtered);
+        }
+
+        function renderUsersTable(users) {
+            document.getElementById('usersTable').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên</th>
+                            <th>Email</th>
+                            <th>Telegram</th>
+                            <th>Tools</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(u => `
+                            <tr>
+                                <td>${u.id}</td>
+                                <td><strong>${u.name}</strong></td>
+                                <td>${u.email}</td>
+                                <td>${u.telegram_id || '<span style="color:var(--text-muted)">—</span>'}</td>
+                                <td>
+                                    <span class="badge badge-info" style="cursor:pointer" onclick="toggleExpand(${u.id})">
+                                        ${u.licenses_count} license${u.licenses_count !== 1 ? 's' : ''}
+                                    </span>
+                                </td>
+                                <td>${u.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'}</td>
+                                <td style="display:flex;gap:4px">
+                                    <button class="btn btn-xs btn-info" onclick="editUser(${u.id})">Sửa</button>
+                                    <button class="btn btn-xs ${u.active ? 'btn-warning' : 'btn-success'}" onclick="toggleUser(${u.id}, ${!u.active})">${u.active ? 'Khóa' : 'Mở'}</button>
+                                    <button class="btn btn-xs btn-danger" onclick="deleteUser(${u.id})">Xóa</button>
+                                </td>
+                            </tr>
+                            <tr class="expand-row" id="expand-${u.id}">
+                                <td colspan="7">
+                                    <div class="license-chips">
+                                        ${u.licenses.length === 0 ? '<span style="color:var(--text-muted);font-size:13px">Chưa có license nào</span>' :
+                                        u.licenses.map(lic => `
+                                            <div class="license-chip">
+                                                <span class="chip-tool">${lic.tool_name}</span>
+                                                <span class="chip-key">${lic.license_key}</span>
+                                                <span class="chip-expire">Hết hạn: ${new Date(lic.expire_at).toLocaleDateString('vi-VN')}
+                                                    ${lic.active ? '' : ' • <span style="color:var(--danger)">Inactive</span>'}
+                                                    ${new Date(lic.expire_at) < new Date() ? ' • <span style="color:var(--danger)">Expired</span>' : ''}
+                                                </span>
+                                                <span style="font-size:10px;color:var(--text-muted)">Sử dụng: ${lic.use_count} lần${lic.device_id ? ' • Device: ' + lic.device_id.substring(0,16) + '...' : ''}</span>
+                                                <div class="chip-actions">
+                                                    <button class="btn btn-xs ${lic.active ? 'btn-warning' : 'btn-success'}" onclick="toggleLicense(${lic.id}, ${!lic.active})">${lic.active ? 'Tắt' : 'Bật'}</button>
+                                                    ${lic.device_id ? `<button class="btn btn-xs btn-info" onclick="resetDevice(${lic.id})">Reset Device</button>` : ''}
+                                                    <button class="btn btn-xs btn-danger" onclick="deleteLicense(${lic.id})">Xóa</button>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function toggleExpand(userId) {
+            const row = document.getElementById(`expand-${userId}`);
+            row.classList.toggle('active');
+        }
+
+        // ========== Licenses ==========
+        async function loadLicenses() {
+            try {
+                const res = await apiFetch('/panel/api/licenses');
+                if (res.ok) {
+                    allLicenses = await res.json();
+                    renderLicensesTable(allLicenses);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function filterLicenses() {
+            const q = document.getElementById('searchLicense').value.toLowerCase();
+            const tool = document.getElementById('filterTool').value;
+            let filtered = allLicenses;
+            if (q) filtered = filtered.filter(l =>
+                l.license_key.toLowerCase().includes(q) ||
+                l.user_name.toLowerCase().includes(q) ||
+                l.user_email.toLowerCase().includes(q)
+            );
+            if (tool) filtered = filtered.filter(l => l.tool_code === tool);
+            renderLicensesTable(filtered);
+        }
+
+        function renderLicensesTable(licenses) {
+            document.getElementById('licensesTable').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>License Key</th>
+                            <th>Tool</th>
+                            <th>User</th>
+                            <th>Trạng thái</th>
+                            <th>Hết hạn</th>
+                            <th>Sử dụng</th>
+                            <th>Device</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${licenses.map(lic => {
+                            const expired = new Date(lic.expire_at) < new Date();
+                            return `
+                            <tr>
+                                <td><code>${lic.license_key}</code></td>
+                                <td><span class="badge badge-info">${lic.tool_name}</span></td>
+                                <td><strong>${lic.user_name}</strong><br><span style="color:var(--text-muted);font-size:11px">${lic.user_email}</span></td>
+                                <td>
+                                    ${lic.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'}
+                                    ${expired ? '<span class="badge badge-danger" style="margin-left:4px">Expired</span>' : ''}
+                                </td>
+                                <td>${new Date(lic.expire_at).toLocaleDateString('vi-VN')}</td>
+                                <td>${lic.use_count}</td>
+                                <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;font-size:11px">${lic.device_id || '—'}</td>
+                                <td style="display:flex;gap:4px;flex-wrap:wrap">
+                                    <button class="btn btn-xs ${lic.active ? 'btn-warning' : 'btn-success'}" onclick="toggleLicense(${lic.id}, ${!lic.active})">${lic.active ? 'Tắt' : 'Bật'}</button>
+                                    ${lic.device_id ? `<button class="btn btn-xs btn-info" onclick="resetDevice(${lic.id})">Reset</button>` : ''}
+                                    <button class="btn btn-xs btn-danger" onclick="deleteLicense(${lic.id})">Xóa</button>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // ========== Tools Tab ==========
+        function renderToolCards(toolStats) {
+            const cards = (toolStats || []).map(t => `
+                <div class="tool-card">
+                    <div class="tool-name">${t.name}</div>
+                    <div class="tool-code">TOOL_CODE: ${t.code}</div>
+                    <div class="tool-endpoint">Endpoint: /api/v2/${t.code}/verify</div>
+                    <div class="tool-stats">
+                        <div class="tool-stat">
+                            <div class="num" style="color:var(--info)">${t.total}</div>
+                            <div class="label">Total</div>
+                        </div>
+                        <div class="tool-stat">
+                            <div class="num" style="color:var(--success)">${t.active}</div>
+                            <div class="label">Active</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('toolCards').innerHTML = cards || '<p style="color:var(--text-muted)">Chưa có dữ liệu</p>';
+        }
+
+        // ========== Tab Switching ==========
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-header').forEach(h => h.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+            if (tab === 'users') loadUsers();
+            if (tab === 'licenses') loadLicenses();
+            if (tab === 'tools') loadStats();
+        }
+
+        // ========== Modals ==========
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        function showUserModal(userId = null) {
+            document.getElementById('userForm').reset();
+            document.getElementById('editUserId').value = '';
+            if (userId) {
+                const u = allUsers.find(u => u.id === userId);
+                if (u) {
+                    document.getElementById('userModalTitle').textContent = 'Sửa User';
+                    document.getElementById('editUserId').value = u.id;
+                    document.getElementById('formUserName').value = u.name;
+                    document.getElementById('formUserEmail').value = u.email;
+                    document.getElementById('formUserTelegram').value = u.telegram_id || '';
+                }
+            } else {
+                document.getElementById('userModalTitle').textContent = 'Thêm User Mới';
+            }
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        function editUser(id) { showUserModal(id); }
+
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('editUserId').value;
+            const data = {
+                name: document.getElementById('formUserName').value,
+                email: document.getElementById('formUserEmail').value,
+                telegram_id: document.getElementById('formUserTelegram').value || null
+            };
+            try {
+                let res;
+                if (editId) {
+                    res = await apiFetch(`/panel/api/users/${editId}`, {
+                        method: 'PATCH', body: JSON.stringify(data)
+                    });
+                } else {
+                    res = await apiFetch('/panel/api/users', {
+                        method: 'POST', body: JSON.stringify(data)
+                    });
+                }
+                if (res.ok) {
+                    closeModal('userModal');
+                    toast(editId ? 'Cập nhật user thành công!' : 'Thêm user thành công!');
+                    await loadUsers();
+                    await loadStats();
+                } else {
+                    const err = await res.json();
+                    toast(err.detail || 'Lỗi', 'error');
+                }
+            } catch (e) { toast('Lỗi kết nối', 'error'); }
+        });
+
+        async function toggleUser(id, active) {
+            try {
+                const res = await apiFetch(`/panel/api/users/${id}`, {
+                    method: 'PATCH', body: JSON.stringify({ active })
+                });
+                if (res.ok) {
+                    toast(active ? 'Đã mở khóa user' : 'Đã khóa user');
+                    await loadUsers();
+                }
+            } catch (e) { toast('Lỗi', 'error'); }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Xóa user này sẽ xóa tất cả license của họ. Bạn có chắc?')) return;
+            try {
+                const res = await apiFetch(`/panel/api/users/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    toast('Đã xóa user');
+                    await Promise.all([loadUsers(), loadLicenses(), loadStats()]);
+                }
+            } catch (e) { toast('Lỗi', 'error'); }
+        }
+
+        // ========== License Actions ==========
+        function showLicenseModal() {
+            document.getElementById('licenseForm').reset();
+            // Populate user select
+            const sel = document.getElementById('formLicUser');
+            sel.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+            document.getElementById('licenseModal').classList.add('active');
+        }
+
+        document.getElementById('licenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                user_id: parseInt(document.getElementById('formLicUser').value),
+                tool_code: document.getElementById('formLicTool').value,
+                expire_days: parseInt(document.getElementById('formLicDays').value),
+                notes: document.getElementById('formLicNotes').value || null
+            };
+            try {
+                const res = await apiFetch('/panel/api/licenses', {
+                    method: 'POST', body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const result = await res.json();
+                    closeModal('licenseModal');
+                    toast(`License tạo thành công: ${result.license_key}`);
+                    await Promise.all([loadUsers(), loadLicenses(), loadStats()]);
+                } else {
+                    const err = await res.json();
+                    toast(err.detail || 'Lỗi', 'error');
+                }
+            } catch (e) { toast('Lỗi kết nối', 'error'); }
+        });
+
+        async function toggleLicense(id, active) {
+            try {
+                const res = await apiFetch(`/panel/api/licenses/${id}`, {
+                    method: 'PATCH', body: JSON.stringify({ active })
+                });
+                if (res.ok) {
+                    toast(active ? 'Đã kích hoạt license' : 'Đã tắt license');
+                    await Promise.all([loadUsers(), loadLicenses(), loadStats()]);
+                }
+            } catch (e) { toast('Lỗi', 'error'); }
+        }
+
+        async function resetDevice(id) {
+            if (!confirm('Reset device binding cho license này?')) return;
+            try {
+                const res = await apiFetch(`/panel/api/licenses/${id}/reset-device`, { method: 'POST' });
+                if (res.ok) {
+                    toast('Đã reset device binding');
+                    await Promise.all([loadUsers(), loadLicenses()]);
+                }
+            } catch (e) { toast('Lỗi', 'error'); }
+        }
+
+        async function deleteLicense(id) {
+            if (!confirm('Xóa license này?')) return;
+            try {
+                const res = await apiFetch(`/panel/api/licenses/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    toast('Đã xóa license');
+                    await Promise.all([loadUsers(), loadLicenses(), loadStats()]);
+                }
+            } catch (e) { toast('Lỗi', 'error'); }
+        }
+    </script>
+</body>
+</html>
