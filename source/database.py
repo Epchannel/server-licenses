@@ -109,38 +109,107 @@ class SystemStat(Base):
     heartbeat_failed = Column(Integer, default=0)
 
 
-# ==================== Tool Definitions ====================
+class Tool(Base):
+    """Tool definition model - stored in database for dynamic management"""
+    __tablename__ = "tools"
 
-AVAILABLE_TOOLS = {
-    "VER_PHONE_VEO": {
-        "name": "Ver Phone Veo 3",
-        "code": "VER_PHONE_VEO",
-        "prefix": "EPMMO",
-        "key_prefix": "VER",
-        "endpoint": "/api/v2/VER_PHONE_VEO/verify"
-    },
-    "CHECK_VEO3": {
-        "name": "Check Ultra Veo 3",
-        "code": "CHECK_VEO3",
-        "prefix": "EPMMO",
-        "key_prefix": "CHECK",
-        "endpoint": "/api/v2/CHECK_VEO3/verify"
-    },
-    "PICK_VEO3": {
-        "name": "Pick User Veo 3",
-        "code": "PICK_VEO3",
-        "prefix": "EPMMO",
-        "key_prefix": "PICK",
-        "endpoint": "/api/v2/PICK_VEO3/verify"
-    },
-    "CHANGE_PASS": {
-        "name": "Change Pass Veo 3",
-        "code": "CHANGE_PASS",
-        "prefix": "EPMMO",
-        "key_prefix": "PASS",
-        "endpoint": "/api/v2/CHANGE_PASS/verify"
-    }
-}
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, index=True, nullable=False)
+    name = Column(String(200), nullable=False)
+    prefix = Column(String(50), default="EPMMO")
+    key_prefix = Column(String(50), default="")
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ==================== Tool Definitions ====================
+# This dict is loaded from the database at startup
+AVAILABLE_TOOLS = {}
+
+# Default tools to seed on first run
+_DEFAULT_TOOLS = [
+    {"code": "VER_PHONE_VEO", "name": "Ver Phone Veo 3", "prefix": "EPMMO", "key_prefix": "VER"},
+    {"code": "CHECK_VEO3", "name": "Check Ultra Veo 3", "prefix": "EPMMO", "key_prefix": "CHECK"},
+    {"code": "PICK_VEO3", "name": "Pick User Veo 3", "prefix": "EPMMO", "key_prefix": "PICK"},
+    {"code": "CHANGE_PASS", "name": "Change Pass Veo 3", "prefix": "EPMMO", "key_prefix": "PASS"},
+]
+
+
+def load_tools_from_db():
+    """Load all active tools from database into AVAILABLE_TOOLS dict"""
+    global AVAILABLE_TOOLS
+    db = SessionLocal()
+    try:
+        tools = db.query(Tool).filter(Tool.active == True).all()
+        AVAILABLE_TOOLS.clear()
+        for t in tools:
+            AVAILABLE_TOOLS[t.code] = {
+                "id": t.id,
+                "name": t.name,
+                "code": t.code,
+                "prefix": t.prefix,
+                "key_prefix": t.key_prefix,
+                "endpoint": f"/api/v2/{t.code}/verify"
+            }
+        print(f"✅ Loaded {len(AVAILABLE_TOOLS)} tools from database")
+    finally:
+        db.close()
+
+
+def seed_default_tools():
+    """Seed default tools into database if none exist"""
+    db = SessionLocal()
+    try:
+        count = db.query(Tool).count()
+        if count == 0:
+            for t in _DEFAULT_TOOLS:
+                tool = Tool(**t)
+                db.add(tool)
+            db.commit()
+            print(f"✅ Seeded {len(_DEFAULT_TOOLS)} default tools")
+        else:
+            print(f"✅ {count} tools already in database")
+    finally:
+        db.close()
+
+
+def create_tool_in_db(db: Session, data: Dict[str, Any]) -> Tool:
+    """Create a new tool"""
+    tool = Tool(**data)
+    db.add(tool)
+    db.commit()
+    db.refresh(tool)
+    # Reload AVAILABLE_TOOLS
+    load_tools_from_db()
+    return tool
+
+
+def get_all_tools_from_db(db: Session) -> List[Tool]:
+    """Get all tools"""
+    return db.query(Tool).all()
+
+
+def update_tool_in_db(db: Session, tool_id: int, data: Dict[str, Any]) -> Optional[Tool]:
+    """Update a tool"""
+    tool = db.query(Tool).filter(Tool.id == tool_id).first()
+    if tool:
+        for key, value in data.items():
+            setattr(tool, key, value)
+        db.commit()
+        db.refresh(tool)
+        load_tools_from_db()
+    return tool
+
+
+def delete_tool_from_db(db: Session, tool_id: int) -> bool:
+    """Delete a tool"""
+    tool = db.query(Tool).filter(Tool.id == tool_id).first()
+    if tool:
+        db.delete(tool)
+        db.commit()
+        load_tools_from_db()
+        return True
+    return False
 
 
 class ToolUser(Base):
@@ -199,6 +268,8 @@ def init_db():
     """Initialize database - create all tables"""
     Base.metadata.create_all(bind=engine)
     print("✅ Database initialized")
+    seed_default_tools()
+    load_tools_from_db()
 
 
 def create_default_admin():
@@ -474,24 +545,24 @@ def verify_tool_license(
     ).first()
 
     if not lic_any:
-        return {"valid": False, "message": "Invalid license key"}
+        return {"valid": False, "message": "Key bản quyền không hợp lệ"}
 
     # Check if the license is for the correct tool (only when tool_code is specified)
     if tool_code is not None and lic_any.tool_code != tool_code:
         return {
             "valid": False,
-            "message": f"License is not valid for tool: {tool_code}"
+            "message": f"Key không thuộc tool: {tool_code}"
         }
 
     lic = lic_any
 
     if not lic.active:
-        return {"valid": False, "message": "License has been deactivated"}
+        return {"valid": False, "message": "Bản quyền đã bị vô hiệu hóa"}
 
     if datetime.utcnow() > lic.expire_at:
         return {
             "valid": False,
-            "message": "License has expired",
+            "message": "Bản quyền đã hết hạn",
             "expire_at": lic.expire_at.isoformat()
         }
 
@@ -502,7 +573,7 @@ def verify_tool_license(
             if device_name:
                 lic.device_name = device_name
         elif lic.device_id != device_id:
-            return {"valid": False, "message": "License is bound to another device"}
+            return {"valid": False, "message": "Key đã được gán cho thiết bị khác"}
         else:
             # Same device, update name if provided
             if device_name and device_name != lic.device_name:
@@ -520,7 +591,7 @@ def verify_tool_license(
         "valid": True,
         "expire_at": lic.expire_at.isoformat(),
         "features": lic.features or ["basic"],
-        "message": "License verified successfully",
+        "message": "Xác minh bản quyền thành công",
         "user_name": user.name if user else None,
         "user_email": user.email if user else None,
         "tool_code": lic.tool_code

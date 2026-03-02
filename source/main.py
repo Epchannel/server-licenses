@@ -28,12 +28,13 @@ from database import (
     get_db, init_db, License, LicenseLog, AdminUser, SystemStat,
     get_license_by_key, create_license, update_license, delete_license,
     log_license_activity, get_stats, create_default_admin,
-    ToolUser, ToolLicense, AVAILABLE_TOOLS,
+    ToolUser, ToolLicense, AVAILABLE_TOOLS, Tool,
     create_tool_user, get_tool_user, get_tool_user_by_email,
     get_all_tool_users, update_tool_user, delete_tool_user,
     create_tool_license, get_tool_license_by_key, get_tool_licenses_for_user,
     get_all_tool_licenses, update_tool_license, delete_tool_license,
-    verify_tool_license, generate_tool_license_key
+    verify_tool_license, generate_tool_license_key,
+    create_tool_in_db, get_all_tools_from_db, update_tool_in_db, delete_tool_from_db
 )
 from auth import (
     authenticate_user, create_access_token, get_current_user, get_current_superuser,
@@ -250,7 +251,7 @@ async def verify_license(
         signature = generate_signature(f"invalid|{license_key}|{device_id}")
         return VerifyResponse(
             valid=False,
-            message="Invalid license key",
+            message="Key bản quyền không hợp lệ",
             signature=signature
         )
 
@@ -265,7 +266,7 @@ async def verify_license(
         signature = generate_signature(f"inactive|{license_key}|{device_id}")
         return VerifyResponse(
             valid=False,
-            message="License has been deactivated",
+            message="Bản quyền đã bị vô hiệu hóa",
             signature=signature
         )
 
@@ -279,7 +280,7 @@ async def verify_license(
         return VerifyResponse(
             valid=False,
             expire_at=license_obj.expire_at.isoformat(),
-            message="License has expired",
+            message="Bản quyền đã hết hạn",
             signature=signature
         )
 
@@ -288,12 +289,12 @@ async def verify_license(
         license_obj.device_id = device_id
         license_obj.device_name = device_name
         license_obj.activated_at = datetime.utcnow()
-        message = "License activated and bound to device"
+        message = "Bản quyền đã kích hoạt và gán với thiết bị"
         action = "activate"
     elif license_obj.device_id == device_id:
         if device_name and device_name != license_obj.device_name:
             license_obj.device_name = device_name
-        message = "License verified successfully"
+        message = "Xác minh bản quyền thành công"
         action = "verify"
     else:
         log_license_activity(
@@ -303,7 +304,7 @@ async def verify_license(
         signature = generate_signature(f"device_mismatch|{license_key}|{device_id}")
         return VerifyResponse(
             valid=False,
-            message="License is bound to another device",
+            message="Key đã được gán cho thiết bị khác",
             signature=signature
         )
 
@@ -550,6 +551,41 @@ async def tool_admin_panel():
     return HTMLResponse(content=open("static/panel.html").read())
 
 
+# Panel key-based login
+PANEL_ACCESS_KEY = os.getenv("PANEL_ACCESS_KEY", "EpChannel")
+
+class PanelKeyLogin(BaseModel):
+    key: str
+
+@app.post("/panel/login")
+async def panel_key_login(
+    login_req: PanelKeyLogin,
+    db: Session = Depends(get_db)
+):
+    """Panel login with access key"""
+    if login_req.key != PANEL_ACCESS_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access key"
+        )
+    
+    # Get the first active admin user to create a valid token
+    admin_user = db.query(AdminUser).filter(AdminUser.active == True).first()
+    if not admin_user:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No active admin user found"
+        )
+    
+    access_token = create_access_token(data={"sub": admin_user.username})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "username": admin_user.username
+    }
+
+
 # ==================== Tool User Management API ====================
 
 class ToolUserCreate(BaseModel):
@@ -767,11 +803,88 @@ async def panel_reset_device(
 
 # ==================== Tool Info API ====================
 
+class ToolCreate(BaseModel):
+    code: str
+    name: str
+    prefix: str = "EPMMO"
+    key_prefix: str = ""
+
+class ToolUpdate(BaseModel):
+    name: Optional[str] = None
+    prefix: Optional[str] = None
+    key_prefix: Optional[str] = None
+    active: Optional[bool] = None
+
 @app.get("/panel/api/tools")
 async def panel_list_tools(
+    db: Session = Depends(get_db),
     current_user: AdminUser = Depends(get_current_user)
 ):
-    return list(AVAILABLE_TOOLS.values())
+    """List all tools from database"""
+    tools = get_all_tools_from_db(db)
+    return [
+        {
+            "id": t.id,
+            "code": t.code,
+            "name": t.name,
+            "prefix": t.prefix,
+            "key_prefix": t.key_prefix,
+            "active": t.active,
+            "endpoint": f"/api/v2/{t.code}/verify",
+            "created_at": t.created_at.isoformat() if t.created_at else None
+        }
+        for t in tools
+    ]
+
+
+@app.post("/panel/api/tools", status_code=201)
+async def panel_create_tool(
+    tool_data: ToolCreate,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user)
+):
+    """Create a new tool"""
+    # Check if code already exists
+    existing = db.query(Tool).filter(Tool.code == tool_data.code).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Tool code '{tool_data.code}' already exists")
+    
+    tool = create_tool_in_db(db, tool_data.dict())
+    return {
+        "id": tool.id,
+        "code": tool.code,
+        "name": tool.name,
+        "prefix": tool.prefix,
+        "key_prefix": tool.key_prefix,
+        "endpoint": f"/api/v2/{tool.code}/verify"
+    }
+
+
+@app.patch("/panel/api/tools/{tool_id}")
+async def panel_update_tool(
+    tool_id: int,
+    tool_data: ToolUpdate,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user)
+):
+    """Update a tool"""
+    update_data = tool_data.dict(exclude_unset=True)
+    tool = update_tool_in_db(db, tool_id, update_data)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    return {"message": "Tool updated", "id": tool.id}
+
+
+@app.delete("/panel/api/tools/{tool_id}")
+async def panel_delete_tool(
+    tool_id: int,
+    db: Session = Depends(get_db),
+    current_user: AdminUser = Depends(get_current_user)
+):
+    """Delete a tool"""
+    if delete_tool_from_db(db, tool_id):
+        return {"message": "Tool deleted successfully"}
+    raise HTTPException(status_code=404, detail="Tool not found")
 
 
 @app.get("/panel/api/stats")
@@ -889,13 +1002,13 @@ async def tool_heartbeat(
             # Use existing heartbeat logic for old licenses
             if not old_lic.active:
                 signature = generate_signature(f"inactive|heartbeat|{timestamp}")
-                return {"valid": False, "message": "License deactivated", "timestamp": timestamp, "signature": signature}
+                return {"valid": False, "message": "Bản quyền đã bị vô hiệu hóa", "timestamp": timestamp, "signature": signature}
             if datetime.utcnow() > old_lic.expire_at:
                 signature = generate_signature(f"expired|heartbeat|{timestamp}")
-                return {"valid": False, "message": "License expired", "timestamp": timestamp, "signature": signature}
+                return {"valid": False, "message": "Bản quyền đã hết hạn", "timestamp": timestamp, "signature": signature}
             if old_lic.device_id != device_id:
                 signature = generate_signature(f"device_mismatch|heartbeat|{timestamp}")
-                return {"valid": False, "message": "Device mismatch", "timestamp": timestamp, "signature": signature}
+                return {"valid": False, "message": "Thiết bị không khớp", "timestamp": timestamp, "signature": signature}
             old_lic.heartbeat_count += 1
             old_lic.last_verified_at = datetime.utcnow()
             db.commit()
@@ -903,20 +1016,20 @@ async def tool_heartbeat(
             return {"valid": True, "message": "Heartbeat OK", "timestamp": timestamp, "signature": signature}
 
         signature = generate_signature(f"invalid|heartbeat|{timestamp}")
-        return {"valid": False, "message": "Invalid license key", "timestamp": timestamp, "signature": signature}
+        return {"valid": False, "message": "Key bản quyền không hợp lệ", "timestamp": timestamp, "signature": signature}
 
     # Tool license heartbeat
     if not lic.active:
         signature = generate_signature(f"inactive|heartbeat|{timestamp}")
-        return {"valid": False, "message": "License deactivated", "timestamp": timestamp, "signature": signature}
+        return {"valid": False, "message": "Bản quyền đã bị vô hiệu hóa", "timestamp": timestamp, "signature": signature}
 
     if datetime.utcnow() > lic.expire_at:
         signature = generate_signature(f"expired|heartbeat|{timestamp}")
-        return {"valid": False, "message": "License expired", "timestamp": timestamp, "signature": signature}
+        return {"valid": False, "message": "Bản quyền đã hết hạn", "timestamp": timestamp, "signature": signature}
 
     if lic.device_id and lic.device_id != device_id:
         signature = generate_signature(f"device_mismatch|heartbeat|{timestamp}")
-        return {"valid": False, "message": "Device mismatch", "timestamp": timestamp, "signature": signature}
+        return {"valid": False, "message": "Thiết bị không khớp", "timestamp": timestamp, "signature": signature}
 
     # Update usage tracking
     lic.last_used_at = datetime.utcnow()
