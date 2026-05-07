@@ -13,8 +13,10 @@ import os
 
 from database import get_db, AdminUser
 
+import secrets as _secrets
+
 # JWT Settings
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-jwt-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", _secrets.token_hex(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
@@ -120,9 +122,9 @@ def get_current_superuser(
 
 # ==================== API Key Authentication (Optional) ====================
 
-API_KEYS = {
-    os.getenv("API_KEY_1", "test-api-key-123"): "default-client"
-}
+API_KEYS = {}
+if os.getenv("API_KEY_1"):
+    API_KEYS[os.getenv("API_KEY_1")] = "client-1"
 
 
 def verify_api_key(request: Request) -> str:

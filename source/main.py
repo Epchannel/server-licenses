@@ -45,20 +45,23 @@ from auth import (
 app = FastAPI(
     title="License Server V2",
     description="Enhanced License Server with Admin Panel & Monitoring",
-    version="2.0.0"
+    version="2.0.0",
+    docs_url=None if os.getenv("ENV", "production") == "production" else "/docs",
+    redoc_url=None if os.getenv("ENV", "production") == "production" else "/redoc",
 )
 
 # CORS middleware
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Secret key for signature
-SECRET_KEY = os.getenv("SECRET_KEY", "Hiep-dep-trai-nhat-Viet-Nam-2026")
+# Secret key for signature (MUST set via env in production)
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -176,21 +179,16 @@ def get_client_ip(request: Request) -> str:
 
 # ==================== Public API Endpoints ====================
 
-@app.get("/")
-def root():
+@app.get("/", response_class=HTMLResponse)
+async def user_portal():
+    """Serve user portal page"""
+    return HTMLResponse(content=open("static/user_portal.html", encoding="utf-8").read())
+
+
+@app.get("/api/health")
+def health_check():
     """Health check endpoint"""
-    return {
-        "service": "License Server V2",
-        "version": "2.0.0",
-        "status": "running",
-        "features": [
-            "License verification",
-            "Admin panel",
-            "Analytics",
-            "Rate limiting",
-            "Audit logging"
-        ]
-    }
+    return {"status": "running", "version": "2.0.0"}
 
 
 @app.post("/license/verify", response_model=VerifyResponse)
@@ -540,7 +538,7 @@ async def get_statistics(
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel():
     """Serve admin panel HTML"""
-    return HTMLResponse(content=open("static/admin.html").read())
+    return HTMLResponse(content=open("static/admin.html", encoding="utf-8").read())
 
 
 # ==================== Tool Management Panel ====================
@@ -548,11 +546,24 @@ async def admin_panel():
 @app.get("/phamhonghiep", response_class=HTMLResponse)
 async def tool_admin_panel():
     """Serve tool management admin panel"""
-    return HTMLResponse(content=open("static/panel.html").read())
+    return HTMLResponse(content=open("static/panel.html", encoding="utf-8").read())
+
+
+@app.get("/docs-api", response_class=HTMLResponse)
+async def api_docs_page():
+    """Serve API documentation page"""
+    return HTMLResponse(content=open("static/docs.html", encoding="utf-8").read())
+
+
+@app.get("/docs-api/raw")
+async def api_docs_raw():
+    """Serve raw markdown docs for AI agents"""
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(content=open("LICENSE_API_DOCS.md", encoding="utf-8").read())
 
 
 # Panel key-based login
-PANEL_ACCESS_KEY = os.getenv("PANEL_ACCESS_KEY", "EpChannel")
+PANEL_ACCESS_KEY = os.getenv("PANEL_ACCESS_KEY", secrets.token_hex(16))
 
 class PanelKeyLogin(BaseModel):
     key: str
@@ -560,9 +571,15 @@ class PanelKeyLogin(BaseModel):
 @app.post("/panel/login")
 async def panel_key_login(
     login_req: PanelKeyLogin,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Panel login with access key"""
+    # Rate limit: max 5 attempts per minute per IP
+    from auth import rate_limit_check
+    client_ip = get_client_ip(request)
+    if not rate_limit_check(f"panel_login:{client_ip}", max_requests=5, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many attempts. Wait 1 minute.")
     if login_req.key != PANEL_ACCESS_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -592,12 +609,14 @@ class ToolUserCreate(BaseModel):
     email: str
     name: str
     telegram_id: Optional[str] = None
+    password: Optional[str] = None
 
 class ToolUserUpdate(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     telegram_id: Optional[str] = None
     active: Optional[bool] = None
+    password: Optional[str] = None
 
 
 @app.get("/panel/api/users")
@@ -644,7 +663,12 @@ async def panel_create_user(
     existing = get_tool_user_by_email(db, user_data.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
-    user = create_tool_user(db, user_data.dict())
+    import bcrypt
+    data = user_data.dict()
+    password = data.pop("password", None)
+    if password:
+        data["password_hash"] = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    user = create_tool_user(db, data)
     return {
         "id": user.id,
         "email": user.email,
@@ -663,6 +687,10 @@ async def panel_update_user(
     current_user: AdminUser = Depends(get_current_user)
 ):
     update_data = user_data.dict(exclude_unset=True)
+    password = update_data.pop("password", None)
+    if password:
+        import bcrypt
+        update_data["password_hash"] = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     user = update_tool_user(db, user_id, update_data)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1043,6 +1071,85 @@ async def tool_heartbeat(
         "message": "Heartbeat OK",
         "timestamp": timestamp,
         "signature": signature
+    }
+
+
+# ==================== User Portal API ====================
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/user/login")
+async def user_login(req: UserLoginRequest, request: Request, db: Session = Depends(get_db)):
+    """Login for tool users (not admin)"""
+    # Rate limit: max 10 login attempts per minute per IP
+    from auth import rate_limit_check
+    client_ip = get_client_ip(request)
+    if not rate_limit_check(f"user_login:{client_ip}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Quá nhiều lần thử. Vui lòng đợi 1 phút.")
+    import bcrypt
+    user = get_tool_user_by_email(db, req.email)
+    if not user or not user.password_hash:
+        raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+    if not bcrypt.checkpw(req.password.encode(), user.password_hash.encode()):
+        raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+    if not user.active:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
+    # Create token with user type marker
+    access_token = create_access_token(data={"sub": f"user:{user.id}", "type": "user"})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email
+        }
+    }
+
+
+@app.get("/user/profile")
+async def user_profile(request: Request, db: Session = Depends(get_db)):
+    """Get current user profile with all licenses"""
+    from auth import decode_access_token
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.split(" ")[1]
+    payload = decode_access_token(token)
+    if not payload or not payload.get("sub", "").startswith("user:"):
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = int(payload["sub"].split(":")[1])
+    user = get_tool_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    licenses = get_tool_licenses_for_user(db, user_id)
+    return {
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "telegram_id": user.telegram_id,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        },
+        "licenses": [
+            {
+                "id": lic.id,
+                "tool_code": lic.tool_code,
+                "tool_name": AVAILABLE_TOOLS.get(lic.tool_code, {}).get("name", lic.tool_code),
+                "license_key": lic.license_key,
+                "active": lic.active,
+                "expire_at": lic.expire_at.isoformat() if lic.expire_at else None,
+                "device_id": lic.device_id,
+                "device_name": lic.device_name,
+                "use_count": lic.use_count,
+                "last_used_at": lic.last_used_at.isoformat() if lic.last_used_at else None,
+                "expired": datetime.utcnow() > lic.expire_at if lic.expire_at else False
+            }
+            for lic in licenses
+        ]
     }
 
 

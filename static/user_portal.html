@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EP Channel — User Portal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+
+        /* Login */
+        .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .login-box { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; }
+        .login-box h1 { text-align: center; color: #333; margin-bottom: 8px; font-size: 24px; }
+        .login-box p.sub { text-align: center; color: #888; font-size: 14px; margin-bottom: 28px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; color: #555; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+        .form-group input { width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.3s; }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        .btn-login { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-login:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+        .error-msg { color: #dc3545; text-align: center; margin-top: 12px; font-size: 14px; min-height: 20px; }
+
+        /* Dashboard */
+        .dashboard { max-width: 960px; margin: 0 auto; padding: 20px; }
+        .dash-header { background: white; border-radius: 14px; padding: 24px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        .dash-header .welcome h2 { color: #333; font-size: 20px; }
+        .dash-header .welcome p { color: #888; font-size: 13px; }
+        .btn-out { padding: 8px 18px; background: #e0e0e0; color: #555; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-out:hover { background: #ccc; }
+
+        /* Summary cards */
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .s-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); text-align: center; }
+        .s-card .s-num { font-size: 32px; font-weight: 700; }
+        .s-card .s-label { color: #888; font-size: 12px; text-transform: uppercase; margin-top: 4px; }
+        .s-num.green { color: #28a745; }
+        .s-num.red { color: #dc3545; }
+        .s-num.blue { color: #667eea; }
+
+        /* License cards */
+        .section-title { color: white; font-size: 18px; font-weight: 600; margin-bottom: 14px; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .lic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .lic-card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s; }
+        .lic-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .lic-tool { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .lic-tool-name { font-weight: 700; font-size: 16px; color: #333; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+        .badge-active { background: #d4edda; color: #155724; }
+        .badge-expired { background: #f8d7da; color: #721c24; }
+        .badge-inactive { background: #e2e3e5; color: #383d41; }
+        .lic-key { font-family: 'Consolas', monospace; font-size: 13px; background: #f8f9fa; padding: 10px 14px; border-radius: 8px; color: #333; cursor: pointer; transition: all 0.2s; word-break: break-all; margin-bottom: 12px; position: relative; }
+        .lic-key:hover { background: #667eea; color: white; }
+        .lic-key::after { content: '📋 Click để copy'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; opacity: 0; transition: opacity 0.2s; }
+        .lic-key:hover::after { opacity: 1; }
+        .lic-info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; }
+        .lic-info .label { color: #888; }
+        .lic-info .val { color: #333; font-weight: 500; text-align: right; }
+
+        .empty-state { text-align: center; color: rgba(255,255,255,0.8); padding: 60px 20px; }
+        .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state p { font-size: 16px; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: rgba(0,0,0,0.85); color: white; border-radius: 8px; font-size: 13px; z-index: 9999; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+            .dash-header { flex-direction: column; gap: 12px; text-align: center; padding: 20px; }
+            .summary { grid-template-columns: repeat(2, 1fr); }
+            .lic-grid { grid-template-columns: 1fr; }
+            .login-box { padding: 30px 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <h1>🔑 EP Channel</h1>
+            <p class="sub">Đăng nhập để xem bản quyền của bạn</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required placeholder="email@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="loginPass" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-login">Đăng nhập</button>
+                <div id="loginError" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashPage" class="dashboard hidden">
+        <div class="dash-header">
+            <div class="welcome">
+                <h2>👋 Xin chào, <span id="userName"></span></h2>
+                <p id="userEmail"></p>
+            </div>
+            <button onclick="logout()" class="btn-out">Đăng xuất</button>
+        </div>
+
+        <div class="summary" id="summaryCards"></div>
+
+        <h3 class="section-title">🔐 Bản quyền của bạn</h3>
+        <div class="lic-grid" id="licGrid"></div>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        let token = localStorage.getItem('user_token');
+
+        // Auto-login check
+        if (token) loadProfile();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = '';
+            try {
+                const res = await fetch(`${API}/user/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPass').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    token = data.access_token;
+                    localStorage.setItem('user_token', token);
+                    loadProfile();
+                } else {
+                    errEl.textContent = data.detail || 'Đăng nhập thất bại';
+                }
+            } catch (e) {
+                errEl.textContent = 'Không thể kết nối server';
+            }
+        });
+
+        async function loadProfile() {
+            try {
+                const res = await fetch(`${API}/user/profile`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) { logout(); return; }
+                const data = await res.json();
+                renderDashboard(data);
+            } catch (e) { logout(); }
+        }
+
+        function renderDashboard(data) {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('dashPage').classList.remove('hidden');
+
+            const u = data.user;
+            const lics = data.licenses;
+            document.getElementById('userName').textContent = u.name;
+            document.getElementById('userEmail').textContent = u.email;
+
+            // Summary
+            const active = lics.filter(l => l.active && !l.expired).length;
+            const expired = lics.filter(l => l.expired).length;
+            document.getElementById('summaryCards').innerHTML = `
+                <div class="s-card"><div class="s-num blue">${lics.length}</div><div class="s-label">Tổng License</div></div>
+                <div class="s-card"><div class="s-num green">${active}</div><div class="s-label">Đang hoạt động</div></div>
+                <div class="s-card"><div class="s-num red">${expired}</div><div class="s-label">Hết hạn</div></div>
+            `;
+
+            // License cards
+            if (lics.length === 0) {
+                document.getElementById('licGrid').innerHTML = `
+                    <div class="empty-state" style="grid-column:1/-1">
+                        <div class="icon">📭</div>
+                        <p>Chưa có bản quyền nào. Liên hệ admin để được cấp bản quyền.</p>
+                    </div>`;
+                return;
+            }
+
+            document.getElementById('licGrid').innerHTML = lics.map(lic => {
+                const status = !lic.active ? 'inactive' : lic.expired ? 'expired' : 'active';
+                const statusLabel = status === 'active' ? 'Hoạt động' : status === 'expired' ? 'Hết hạn' : 'Vô hiệu';
+                const expDate = lic.expire_at ? new Date(lic.expire_at).toLocaleDateString('vi-VN') : '-';
+                const lastUsed = lic.last_used_at ? new Date(lic.last_used_at).toLocaleDateString('vi-VN') : 'Chưa dùng';
+                return `
+                    <div class="lic-card">
+                        <div class="lic-tool">
+                            <span class="lic-tool-name">${lic.tool_name}</span>
+                            <span class="badge badge-${status}">${statusLabel}</span>
+                        </div>
+                        <div class="lic-key" onclick="copyKey('${lic.license_key}')">${lic.license_key}</div>
+                        <div class="lic-info">
+                            <span class="label">Hết hạn</span><span class="val">${expDate}</span>
+                            <span class="label">Thiết bị</span><span class="val">${lic.device_name || lic.device_id || 'Chưa kích hoạt'}</span>
+                            <span class="label">Số lần dùng</span><span class="val">${lic.use_count}</span>
+                            <span class="label">Dùng lần cuối</span><span class="val">${lastUsed}</span>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function copyKey(key) {
+            navigator.clipboard.writeText(key).then(() => {
+                const el = document.createElement('div');
+                el.className = 'toast';
+                el.textContent = '📋 Đã copy: ' + key;
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 1500);
+            });
+        }
+
+        function logout() {
+            token = null;
+            localStorage.removeItem('user_token');
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('dashPage').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

@@ -15,6 +15,7 @@ build/
 # Env
 .env
 .env.*
+!.env.example
 *.env
 
 # OS
@@ -31,3 +32,11 @@ Thumbs.db
 # Backups (local)
 *.bak
 *.backup
+backup_info.txt
+
+# SSL/Sensitive
+ssl-info/
+
+# Old unused files
+static/admin.html
+static/panel_new.html

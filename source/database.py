@@ -220,6 +220,7 @@ class ToolUser(Base):
     email = Column(String(200), unique=True, index=True, nullable=False)
     name = Column(String(200), nullable=False)
     telegram_id = Column(String(100), nullable=True)
+    password_hash = Column(String(200), nullable=True)
 
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

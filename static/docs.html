@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EP Channel License Server - API Docs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; line-height: 1.7; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 28px; margin-bottom: 30px; border-radius: 12px; }
+        h1 small { display: block; font-size: 14px; font-weight: 400; opacity: 0.8; margin-top: 8px; }
+        h2 { color: #667eea; margin: 30px 0 15px; padding-bottom: 8px; border-bottom: 2px solid #667eea; font-size: 22px; }
+        h3 { color: #444; margin: 20px 0 10px; font-size: 17px; }
+        p, li { font-size: 15px; margin-bottom: 8px; }
+        ul { padding-left: 24px; }
+        code { background: #e8eaf6; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 13px; color: #d63384; }
+        pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 10px; overflow-x: auto; margin: 12px 0 20px; font-size: 13px; line-height: 1.6; }
+        pre code { background: none; color: inherit; padding: 0; }
+        .card { background: white; border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; color: white; margin-right: 6px; }
+        .badge-post { background: #28a745; }
+        .badge-get { background: #17a2b8; }
+        .endpoint { font-family: monospace; font-size: 15px; font-weight: 600; color: #333; }
+        .param-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        .param-table th, .param-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .param-table th { background: #f8f9fa; font-weight: 600; }
+        .required { color: #dc3545; font-weight: 700; }
+        .optional { color: #888; }
+        .alert { padding: 14px 18px; border-radius: 8px; margin: 12px 0; font-size: 14px; }
+        .alert-info { background: #e3f2fd; border-left: 4px solid #2196f3; }
+        .alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .alert-success { background: #d4edda; border-left: 4px solid #28a745; }
+        .toc { background: white; border-radius: 10px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .toc a { color: #667eea; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .copy-btn { float: right; background: #667eea; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .copy-btn:hover { background: #5a6fd6; }
+        @media (max-width: 768px) { .container { padding: 10px; } h1 { font-size: 22px; padding: 25px 15px; } pre { font-size: 12px; padding: 14px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 EP Channel License Server — API Docs
+            <small>Hướng dẫn tích hợp kiểm tra bản quyền vào tool</small>
+        </h1>
+
+        <div style="text-align:center;margin-bottom:24px">
+            <a href="/docs-api/raw" target="_blank" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#1e1e2e,#333);color:#cdd6f4;border-radius:8px;text-decoration:none;font-family:monospace;font-size:14px;font-weight:600;box-shadow:0 4px 15px rgba(0,0,0,0.2);transition:transform 0.2s" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                🤖 Raw Markdown cho AI Agent → /docs-api/raw
+            </a>
+            <p style="color:#888;font-size:12px;margin-top:8px">File .md nhỏ gọn (~800 tokens) — Copy link này gửi cho AI agent</p>
+        </div>
+
+        <div class="toc">
+            <h3>📑 Mục lục</h3>
+            <ul>
+                <li><a href="#overview">Tổng quan</a></li>
+                <li><a href="#quick-start">Quick Start — Tích hợp nhanh</a></li>
+                <li><a href="#api-verify">API 1: Verify License</a></li>
+                <li><a href="#api-heartbeat">API 2: Heartbeat</a></li>
+                <li><a href="#response-format">Response Format</a></li>
+                <li><a href="#device-binding">Device Binding</a></li>
+                <li><a href="#full-example">Code mẫu đầy đủ (Python)</a></li>
+                <li><a href="#csharp-example">Code mẫu C#</a></li>
+                <li><a href="#errors">Xử lý lỗi</a></li>
+                <li><a href="#best-practices">Best Practices</a></li>
+            </ul>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div class="card" id="overview">
+            <h2>📌 Tổng quan</h2>
+            <p>License Server cung cấp 2 API chính để tool kiểm tra bản quyền:</p>
+            <ul>
+                <li><strong>Verify</strong> — Xác minh license key khi tool khởi động</li>
+                <li><strong>Heartbeat</strong> — Gửi tín hiệu định kỳ khi tool đang chạy (5-10 phút/lần)</li>
+            </ul>
+            <h3>Base URL</h3>
+            <pre><code>https://your-server-domain.com</code></pre>
+            <div class="alert alert-info">
+                ⚠️ Thay <code>your-server-domain.com</code> bằng domain thực tế khi deploy. Khi dev local: <code>http://localhost:8000</code>
+            </div>
+        </div>
+
+        <!-- QUICK START -->
+        <div class="card" id="quick-start">
+            <h2>🚀 Quick Start — Tích hợp nhanh</h2>
+            <p>Chỉ cần <strong>3 bước</strong> để tích hợp kiểm tra bản quyền vào tool:</p>
+
+            <h3>Bước 1: Xác định TOOL_CODE</h3>
+            <p>Mỗi tool có một <code>TOOL_CODE</code> duy nhất. Ví dụ:</p>
+            <pre><code>TOOL_CODE = "VER_PHONE_VEO"     # Ver Phone Veo 3
+TOOL_CODE = "CHECK_VEO3"        # Check Ultra Veo 3
+TOOL_CODE = "PICK_VEO3"         # Pick User Veo 3
+TOOL_CODE = "CHANGE_PASS_VEO3"  # Change Pass Veo 3</code></pre>
+            <div class="alert alert-warning">
+                💡 Khi tạo tool mới trên Admin Panel, code sẽ tự động tạo endpoint: <code>/api/v2/{TOOL_CODE}/verify</code>
+            </div>
+
+            <h3>Bước 2: Gọi API Verify khi khởi động</h3>
+            <pre><code>import requests, uuid
+
+LICENSE_SERVER = "http://localhost:8000"
+TOOL_CODE = "VER_PHONE_VEO"
+DEVICE_ID = str(uuid.getnode())  # Lấy MAC address làm device ID
+
+def verify_license(license_key):
+    response = requests.post(
+        f"{LICENSE_SERVER}/api/v2/{TOOL_CODE}/verify",
+        json={
+            "license_key": license_key,
+            "device_id": DEVICE_ID,
+            "device_name": "PC-User"
+        }
+    )
+    data = response.json()
+    return data["valid"], data["message"]</code></pre>
+
+            <h3>Bước 3: Gửi Heartbeat định kỳ</h3>
+            <pre><code>import threading
+
+def start_heartbeat(license_key):
+    def heartbeat_loop():
+        while True:
+            try:
+                requests.post(
+                    f"{LICENSE_SERVER}/license/heartbeat",
+                    json={"license_key": license_key, "device_id": DEVICE_ID}
+                )
+            except: pass
+            time.sleep(300)  # 5 phút
+
+    t = threading.Thread(target=heartbeat_loop, daemon=True)
+    t.start()</code></pre>
+        </div>
+
+        <!-- API VERIFY -->
+        <div class="card" id="api-verify">
+            <h2>🔑 API 1: Verify License</h2>
+            <p><span class="badge badge-post">POST</span> <span class="endpoint">/api/v2/{tool_code}/verify</span></p>
+            <p>Xác minh license key. Gọi khi tool khởi động. Tự động bind device lần đầu.</p>
+
+            <h3>Request Body (JSON)</h3>
+            <table class="param-table">
+                <thead><tr><th>Field</th><th>Type</th><th>Bắt buộc</th><th>Mô tả</th></tr></thead>
+                <tbody>
+                    <tr><td><code>license_key</code></td><td>string</td><td class="required">✅ Bắt buộc</td><td>License key cần kiểm tra</td></tr>
+                    <tr><td><code>device_id</code></td><td>string</td><td class="optional">Không bắt buộc</td><td>ID thiết bị (MAC, UUID...). Nếu gửi sẽ tự bind lần đầu.</td></tr>
+                    <tr><td><code>device_name</code></td><td>string</td><td class="optional">Không bắt buộc</td><td>Tên thiết bị (hiển thị trên admin)</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Ví dụ Request</h3>
+            <pre><code>POST /api/v2/VER_PHONE_VEO/verify
+Content-Type: application/json
+
+{
+    "license_key": "EPMMO-VPV-ABCD1234EFGH",
+    "device_id": "A1B2C3D4E5F6",
+    "device_name": "Laptop-HiepPham"
+}</code></pre>
+
+            <h3>Response — Thành công</h3>
+            <pre><code>{
+    "valid": true,
+    "expire_at": "2026-12-30T00:00:00",
+    "features": ["basic"],
+    "message": "Xác minh bản quyền thành công",
+    "user_name": "Hiep Pham",
+    "user_email": "hiep@example.com",
+    "tool_code": "VER_PHONE_VEO",
+    "signature": "a1b2c3d4..."
+}</code></pre>
+
+            <h3>Response — Thất bại</h3>
+            <pre><code>{
+    "valid": false,
+    "message": "Key bản quyền không hợp lệ"
+}
+
+// Hoặc:
+{ "valid": false, "message": "Bản quyền đã hết hạn", "expire_at": "2025-01-01T00:00:00" }
+{ "valid": false, "message": "Bản quyền đã bị vô hiệu hóa" }
+{ "valid": false, "message": "Key đã được gán cho thiết bị khác" }
+{ "valid": false, "message": "Key không thuộc tool: VER_PHONE_VEO" }</code></pre>
+        </div>
+
+        <!-- API HEARTBEAT -->
+        <div class="card" id="api-heartbeat">
+            <h2>💓 API 2: Heartbeat</h2>
+            <p><span class="badge badge-post">POST</span> <span class="endpoint">/license/heartbeat</span></p>
+            <p>Gửi tín hiệu định kỳ (5-10 phút) khi tool đang chạy. Server dùng để theo dõi usage và kiểm tra license còn hiệu lực.</p>
+
+            <h3>Request Body (JSON)</h3>
+            <table class="param-table">
+                <thead><tr><th>Field</th><th>Type</th><th>Bắt buộc</th><th>Mô tả</th></tr></thead>
+                <tbody>
+                    <tr><td><code>license_key</code></td><td>string</td><td class="required">✅ Bắt buộc</td><td>License key</td></tr>
+                    <tr><td><code>device_id</code></td><td>string</td><td class="required">✅ Bắt buộc</td><td>ID thiết bị (phải khớp với lần verify)</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Response</h3>
+            <pre><code>// Thành công
+{ "valid": true, "message": "Heartbeat OK", "timestamp": "2026-05-08T01:00:00", "signature": "..." }
+
+// Thất bại
+{ "valid": false, "message": "Bản quyền đã hết hạn", "timestamp": "...", "signature": "..." }
+{ "valid": false, "message": "Thiết bị không khớp", "timestamp": "...", "signature": "..." }</code></pre>
+        </div>
+
+        <!-- RESPONSE FORMAT -->
+        <div class="card" id="response-format">
+            <h2>📋 Response Format Chung</h2>
+            <table class="param-table">
+                <thead><tr><th>Field</th><th>Type</th><th>Mô tả</th></tr></thead>
+                <tbody>
+                    <tr><td><code>valid</code></td><td>boolean</td><td><strong>true</strong> = license hợp lệ, <strong>false</strong> = không hợp lệ</td></tr>
+                    <tr><td><code>message</code></td><td>string</td><td>Thông báo kết quả (tiếng Việt)</td></tr>
+                    <tr><td><code>expire_at</code></td><td>string (ISO)</td><td>Ngày hết hạn (chỉ khi valid=true hoặc hết hạn)</td></tr>
+                    <tr><td><code>features</code></td><td>array</td><td>Danh sách features được cấp</td></tr>
+                    <tr><td><code>user_name</code></td><td>string</td><td>Tên user sở hữu license</td></tr>
+                    <tr><td><code>signature</code></td><td>string</td><td>Chữ ký HMAC để chống giả mạo response</td></tr>
+                </tbody>
+            </table>
+            <div class="alert alert-info">
+                💡 <strong>Quy tắc đơn giản:</strong> Chỉ cần kiểm tra <code>data["valid"] == True</code> là đủ.
+            </div>
+        </div>
+
+        <!-- DEVICE BINDING -->
+        <div class="card" id="device-binding">
+            <h2>📱 Device Binding</h2>
+            <p>Khi gửi <code>device_id</code> trong request verify:</p>
+            <ul>
+                <li><strong>Lần đầu:</strong> Server tự động gán device_id vào license (bind)</li>
+                <li><strong>Lần sau:</strong> Nếu device_id khác → trả về <code>valid: false</code></li>
+                <li><strong>Reset:</strong> Admin có thể reset device binding trên panel</li>
+            </ul>
+            <h3>Cách tạo Device ID</h3>
+            <pre><code># Python — dùng MAC address
+import uuid
+DEVICE_ID = str(uuid.getnode())
+
+# Python — dùng kết hợp MAC + hostname
+import socket
+DEVICE_ID = f"{uuid.getnode()}-{socket.gethostname()}"
+
+# C# — dùng MAC address
+using System.Net.NetworkInformation;
+string deviceId = NetworkInterface.GetAllNetworkInterfaces()
+    .Where(n => n.OperationalStatus == OperationalStatus.Up)
+    .Select(n => n.GetPhysicalAddress().ToString())
+    .FirstOrDefault() ?? Environment.MachineName;</code></pre>
+        </div>
+
+        <!-- FULL PYTHON EXAMPLE -->
+        <div class="card" id="full-example">
+            <h2>🐍 Code mẫu đầy đủ — Python</h2>
+            <p>Copy class này vào project tool, chỉ cần thay <code>LICENSE_SERVER</code> và <code>TOOL_CODE</code>:</p>
+            <pre><code>"""
+License Manager — Tích hợp EP Channel License Server
+Copy file này vào project tool, dùng class LicenseManager.
+"""
+import requests
+import uuid
+import socket
+import threading
+import time
+import sys
+
+
+class LicenseManager:
+    def __init__(self, server_url, tool_code):
+        """
+        Args:
+            server_url: URL của license server. VD: "http://localhost:8000"
+            tool_code:  Code của tool trên server. VD: "VER_PHONE_VEO"
+        """
+        self.server_url = server_url.rstrip("/")
+        self.tool_code = tool_code
+        self.device_id = f"{uuid.getnode()}-{socket.gethostname()}"
+        self.device_name = socket.gethostname()
+        self.license_key = None
+        self.user_name = None
+        self.expire_at = None
+        self._heartbeat_thread = None
+
+    def verify(self, license_key):
+        """Xác minh license key. Trả về (True, data) hoặc (False, message)."""
+        self.license_key = license_key
+        try:
+            resp = requests.post(
+                f"{self.server_url}/api/v2/{self.tool_code}/verify",
+                json={
+                    "license_key": license_key,
+                    "device_id": self.device_id,
+                    "device_name": self.device_name
+                },
+                timeout=10
+            )
+            data = resp.json()
+
+            if data.get("valid"):
+                self.user_name = data.get("user_name")
+                self.expire_at = data.get("expire_at")
+                return True, data
+            else:
+                return False, data.get("message", "License không hợp lệ")
+        except requests.exceptions.ConnectionError:
+            return False, "Không thể kết nối tới license server"
+        except Exception as e:
+            return False, f"Lỗi: {str(e)}"
+
+    def start_heartbeat(self, interval=300):
+        """Bắt đầu gửi heartbeat mỗi {interval} giây (mặc định 5 phút)."""
+        if not self.license_key:
+            return
+
+        def _loop():
+            while True:
+                try:
+                    resp = requests.post(
+                        f"{self.server_url}/license/heartbeat",
+                        json={
+                            "license_key": self.license_key,
+                            "device_id": self.device_id
+                        },
+                        timeout=10
+                    )
+                    data = resp.json()
+                    if not data.get("valid"):
+                        print(f"⚠️ Heartbeat failed: {data.get('message')}")
+                except:
+                    pass
+                time.sleep(interval)
+
+        self._heartbeat_thread = threading.Thread(target=_loop, daemon=True)
+        self._heartbeat_thread.start()
+
+    def verify_and_start(self, license_key):
+        """Verify + tự động start heartbeat. Thoát app nếu thất bại."""
+        valid, result = self.verify(license_key)
+        if valid:
+            print(f"✅ Bản quyền hợp lệ! User: {self.user_name}")
+            print(f"   Hết hạn: {self.expire_at}")
+            self.start_heartbeat()
+            return True
+        else:
+            print(f"❌ {result}")
+            sys.exit(1)
+
+
+# ============ CÁCH SỬ DỤNG ============
+if __name__ == "__main__":
+    # 1. Khởi tạo
+    lm = LicenseManager(
+        server_url="http://localhost:8000",
+        tool_code="VER_PHONE_VEO"        # Thay bằng code tool của bạn
+    )
+
+    # 2. Nhập key và verify
+    key = input("Nhập license key: ").strip()
+    lm.verify_and_start(key)
+
+    # 3. Tool chạy bình thường từ đây...
+    print("🚀 Tool đang chạy...")
+    while True:
+        time.sleep(1)</code></pre>
+        </div>
+
+        <!-- C# EXAMPLE -->
+        <div class="card" id="csharp-example">
+            <h2>🔷 Code mẫu — C#</h2>
+            <pre><code>using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Net.NetworkInformation;
+using System.Linq;
+
+public class LicenseManager
+{
+    private readonly string _serverUrl;
+    private readonly string _toolCode;
+    private readonly string _deviceId;
+    private string _licenseKey;
+    private readonly HttpClient _http = new HttpClient();
+
+    public string UserName { get; private set; }
+    public string ExpireAt { get; private set; }
+
+    public LicenseManager(string serverUrl, string toolCode)
+    {
+        _serverUrl = serverUrl.TrimEnd('/');
+        _toolCode = toolCode;
+        _deviceId = GetDeviceId();
+    }
+
+    private string GetDeviceId()
+    {
+        var mac = NetworkInterface.GetAllNetworkInterfaces()
+            .Where(n => n.OperationalStatus == OperationalStatus.Up)
+            .Select(n => n.GetPhysicalAddress().ToString())
+            .FirstOrDefault();
+        return $"{mac ?? "unknown"}-{Environment.MachineName}";
+    }
+
+    public async Task&lt;(bool valid, string message)&gt; VerifyAsync(string licenseKey)
+    {
+        _licenseKey = licenseKey;
+        var payload = JsonSerializer.Serialize(new {
+            license_key = licenseKey,
+            device_id = _deviceId,
+            device_name = Environment.MachineName
+        });
+        var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var resp = await _http.PostAsync($"{_serverUrl}/api/v2/{_toolCode}/verify", content);
+        var json = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        var root = json.RootElement;
+
+        bool valid = root.GetProperty("valid").GetBoolean();
+        string message = root.GetProperty("message").GetString();
+
+        if (valid) {
+            UserName = root.TryGetProperty("user_name", out var u) ? u.GetString() : null;
+            ExpireAt = root.TryGetProperty("expire_at", out var e) ? e.GetString() : null;
+        }
+        return (valid, message);
+    }
+
+    public void StartHeartbeat(int intervalSeconds = 300)
+    {
+        var timer = new Timer(async _ => {
+            try {
+                var payload = JsonSerializer.Serialize(new {
+                    license_key = _licenseKey,
+                    device_id = _deviceId
+                });
+                var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                await _http.PostAsync($"{_serverUrl}/license/heartbeat", content);
+            } catch { }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(intervalSeconds));
+    }
+}
+
+// Sử dụng:
+// var lm = new LicenseManager("http://localhost:8000", "VER_PHONE_VEO");
+// var (valid, msg) = await lm.VerifyAsync("EPMMO-VPV-ABCD1234");
+// if (valid) lm.StartHeartbeat();</code></pre>
+        </div>
+
+        <!-- ERRORS -->
+        <div class="card" id="errors">
+            <h2>⚠️ Xử lý lỗi</h2>
+            <table class="param-table">
+                <thead><tr><th>Message</th><th>Nguyên nhân</th><th>Xử lý</th></tr></thead>
+                <tbody>
+                    <tr><td>Key bản quyền không hợp lệ</td><td>Key không tồn tại</td><td>Yêu cầu nhập lại key</td></tr>
+                    <tr><td>Bản quyền đã hết hạn</td><td>License expired</td><td>Thông báo gia hạn</td></tr>
+                    <tr><td>Bản quyền đã bị vô hiệu hóa</td><td>Admin disable license</td><td>Liên hệ admin</td></tr>
+                    <tr><td>Key đã được gán cho thiết bị khác</td><td>Device binding conflict</td><td>Liên hệ admin reset device</td></tr>
+                    <tr><td>Key không thuộc tool: {code}</td><td>Key cho tool khác</td><td>Kiểm tra lại key</td></tr>
+                    <tr><td>Tool not found (404)</td><td>tool_code sai</td><td>Kiểm tra TOOL_CODE</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- BEST PRACTICES -->
+        <div class="card" id="best-practices">
+            <h2>✅ Best Practices</h2>
+            <ul>
+                <li><strong>Verify 1 lần khi khởi động</strong> — Không verify mỗi action, chỉ cần lúc start</li>
+                <li><strong>Heartbeat 5-10 phút/lần</strong> — Dùng background thread, daemon=True</li>
+                <li><strong>Xử lý offline</strong> — Nếu không kết nối được server, cho phép chạy tạm (grace period) hoặc thoát</li>
+                <li><strong>Device ID ổn định</strong> — Dùng MAC address, không dùng random UUID (sẽ thay đổi mỗi lần chạy)</li>
+                <li><strong>Timeout</strong> — Set timeout 10s cho requests để không block UI</li>
+                <li><strong>Không hardcode key</strong> — Cho user nhập key hoặc lưu trong file config</li>
+                <li><strong>Kiểm tra <code>valid</code></strong> — Chỉ cần check <code>data["valid"] == True</code>, không cần parse message</li>
+            </ul>
+
+            <div class="alert alert-success">
+                <strong>🤖 Cho AI Agent:</strong> Khi tích hợp license vào tool mới, chỉ cần:
+                <br>1. Copy class <code>LicenseManager</code> ở trên vào project
+                <br>2. Thay <code>server_url</code> = URL server thực tế
+                <br>3. Thay <code>tool_code</code> = code tool đã tạo trên admin panel
+                <br>4. Gọi <code>lm.verify_and_start(key)</code> ở đầu hàm main
+            </div>
+        </div>
+
+        <p style="text-align:center;color:#888;margin:30px 0;font-size:13px">
+            EP Channel License Server v2.0 — Docs generated on 2026
+        </p>
+    </div>
+</body>
+</html>
